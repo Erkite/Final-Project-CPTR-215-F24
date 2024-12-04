@@ -25,10 +25,6 @@ import sys
 from threading import Thread
 
 
-# Test comment
-
-
-
 class ScoreManager:
     pass
 
