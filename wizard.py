@@ -25,10 +25,6 @@ import sys
 from threading import Thread
 
 
-# Test comment
-
-
-
 class ScoreManager:
     pass
 
@@ -37,7 +33,8 @@ class CharacterOptions(Enum):
     Knight = 'Game Images/Characters/knight_running_R.gif'
     Dark_Knight = 'Game Images/Characters/Dark-Knight_running_R.gif'
 
-
+class Obstace(py.sprite.Sprite):
+    pass
 
 class Character(py.sprite.Sprite):
     # Sprite Sheet to animate Characters
