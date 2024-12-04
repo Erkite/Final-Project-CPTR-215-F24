@@ -64,13 +64,14 @@ class Game:
         # Initialize pygames
         py.init()
         # Create and name screen
-        self.screen = py.display.set_mode((800, 600))
+        self.screen = py.display.set_mode((960, 540), py.RESIZABLE)
         py.display.set_caption("Wizard Run")
 
         self.clock = py.time.Clock()
         self.game_state = GameState.MENU
         self.score = 0
         self.selected_character = None
+        self.is_fullscreen = False
         
         # Game states
         self.states = {
@@ -83,8 +84,8 @@ class Game:
         
         # Load images (placeholder functions)
         self.load_images()
-        #self.load_sounds()
-        
+
+
     def load_images(self):
         # Menu assets
         self.menu_bg = None  # Load menu background
@@ -102,93 +103,89 @@ class Game:
             'fields': None,  # Load scrolling field background
             'forest': None,  # Load forest background for boss fight
         }
-        
-        # Character sprites and animations would be loaded here
-    '''    
-    def load_sounds(self):
-        # Load game sounds (jump, hit, music, etc.)
-        pass
-    ''' 
 
-    # Define all GameStates
+    def toggle_fullscreen(self):
+        self.is_fullscreen = not self.is_fullscreen
+        if self.is_fullscreen:
+            # Store the current window size before going fullscreen
+            self.windowed_size = self.screen.get_size()
+            # Switch to fullscreen
+            self.screen = py.display.set_mode((0, 0), py.FULLSCREEN)
+        else:
+            # Return to windowed mode with previous size
+            self.screen = py.display.set_mode(self.windowed_size, py.RESIZABLE)
+
+    def handle_global_events(self, event):
+        # Global event handling that applies to all game states
+        if event.type == py.KEYDOWN:
+            if event.key == py.K_F11 or (event.key == py.K_f and py.key.get_mods() & py.KMOD_ALT):
+                # Toggle fullscreen with F11 or Alt+F
+                self.toggle_fullscreen()
+            
+            # Navigation shortcuts (delete later)
+            if event.key == py.K_1:
+                self.game_state = GameState.MENU
+            if event.key == py.K_2:
+                self.game_state = GameState.CHARACTER_SELECT
+            if event.key == py.K_3:
+                self.game_state = GameState.RUNNING
+            if event.key == py.K_4:
+                self.game_state = GameState.BOSS_FIGHT
+            if event.key == py.K_5:
+                self.game_state = GameState.GAME_OVER
 
     def menu_state(self):
+        self.screen.fill((0, 0, 0))
         bg = py.image.load("Game Images/Test Screens/loading.gif")
         self.screen.blit(bg, (0, 0))
         for event in py.event.get():
             if event.type == py.QUIT:
                 return False
+            
+            # Handle global events first
+            self.handle_global_events(event)
+
             if event.type == py.MOUSEBUTTONDOWN:
                 # Check if start button clicked
                 self.game_state = GameState.CHARACTER_SELECT
-            # TEST EVENT TO CHANGE SCREENS
-            if event.type == py.KEYDOWN:
-                if event.key == py.K_1:
-                    self.game_state = GameState.MENU
-                if event.key == py.K_2:
-                    self.game_state = GameState.CHARACTER_SELECT
-                if event.key == py.K_3:
-                    self.game_state = GameState.RUNNING
-                if event.key == py.K_4:
-                    self.game_state = GameState.BOSS_FIGHT
-                if event.key == py.K_5:
-                    self.game_state = GameState.GAME_OVER
         
-        # Draw menu screen
-        # self.screen.blit(self.menu_bg, (0, 0))
-        # Draw start button
         py.display.flip()
         return True
 
     def character_select_state(self):
+        self.screen.fill((0, 0, 0))
         bg = py.image.load("Game Images/Test Screens/CharacterSelect.jpg")
         self.screen.blit(bg, (0, 0))
         for event in py.event.get():
             if event.type == py.QUIT:
                 return False
+            
+            # Handle global events first
+            self.handle_global_events(event)
+
             if event.type == py.MOUSEBUTTONDOWN:
                 # Check which character was selected
                 # self.selected_character = selected
                 self.game_state = GameState.RUNNING
-            # TEST EVENT TO CHANGE SCREENS
-            if event.type == py.KEYDOWN:
-                if event.key == py.K_1:
-                    self.game_state = GameState.MENU
-                if event.key == py.K_2:
-                    self.game_state = GameState.CHARACTER_SELECT
-                if event.key == py.K_3:
-                    self.game_state = GameState.RUNNING
-                if event.key == py.K_4:
-                    self.game_state = GameState.BOSS_FIGHT
-                if event.key == py.K_5:
-                    self.game_state = GameState.GAME_OVER
         
-        # Draw character selection screen
         py.display.flip()
         return True
 
     def running_state(self):
+        self.screen.fill((0, 0, 0))
         bg = py.image.load("Game Images/Test Screens/RunningState.jpg")
         self.screen.blit(bg, (0, 0))
         for event in py.event.get():
             if event.type == py.QUIT:
                 return False
+            
+            # Handle global events first
+            self.handle_global_events(event)
+
             if event.type == py.KEYDOWN:
                 if event.key == py.K_SPACE:
                     # Handle jump
                     pass
-            # TEST EVENT TO CHANGE SCREENS
-            if event.type == py.KEYDOWN:
-                if event.key == py.K_1:
-                    self.game_state = GameState.MENU
-                if event.key == py.K_2:
-                    self.game_state = GameState.CHARACTER_SELECT
-                if event.key == py.K_3:
-                    self.game_state = GameState.RUNNING
-                if event.key == py.K_4:
-                    self.game_state = GameState.BOSS_FIGHT
-                if event.key == py.K_5:
-                    self.game_state = GameState.GAME_OVER
         
         # Update score
         self.score += 1
@@ -197,64 +194,38 @@ class Game:
         if self.score >= 1000:  # Adjust threshold as needed
             self.game_state = GameState.BOSS_FIGHT
         
-        # Update background scroll
-        # Update character animation
-        # Update obstacles
-        # Check collisions
-        # Draw everything
         py.display.flip()
         return True
 
     def boss_fight_state(self):
-        bg = py.image.load("Game Images/Test Screens/BossFightState.jpg")
+        self.screen.fill((0, 0, 0))
+        bg = py.transform.scale(py.image.load("Game Images/Backgrounds&Objects/BossFightBackground.jpg"), self.screen.get_size())
         self.screen.blit(bg, (0, 0))
         for event in py.event.get():
             if event.type == py.QUIT:
                 return False
+            
+            # Handle global events first
+            self.handle_global_events(event)
+
             if event.type == py.KEYDOWN:
                 # Handle combat controls
                 pass
-            # TEST EVENT TO CHANGE SCREENS
-            if event.type == py.KEYDOWN:
-                if event.key == py.K_1:
-                    self.game_state = GameState.MENU
-                if event.key == py.K_2:
-                    self.game_state = GameState.CHARACTER_SELECT
-                if event.key == py.K_3:
-                    self.game_state = GameState.RUNNING
-                if event.key == py.K_4:
-                    self.game_state = GameState.BOSS_FIGHT
-                if event.key == py.K_5:
-                    self.game_state = GameState.GAME_OVER
         
-        # Update boss fight mechanics
-        # Check win/lose conditions
         py.display.flip()
         return True
-    
 
     def game_over_state(self):
-        bg = py.image.load("Game Images/Test Screens/GameOverState.jpg")
+        bg = py.transform.scale(py.image.load("Game Images/Backgrounds&Objects/GameOverOverlay3.png"), self.screen.get_size())
         self.screen.blit(bg, (0, 0))
-        # TEST EVENT TO CHANGE SCREENS
         for event in py.event.get():
             if event.type == py.QUIT:
                 return False
-            if event.type == py.KEYDOWN:
-                if event.key == py.K_1:
-                    self.game_state = GameState.MENU
-                if event.key == py.K_2:
-                    self.game_state = GameState.CHARACTER_SELECT
-                if event.key == py.K_3:
-                    self.game_state = GameState.RUNNING
-                if event.key == py.K_4:
-                    self.game_state = GameState.BOSS_FIGHT
-                if event.key == py.K_5:
-                    self.game_state = GameState.GAME_OVER
+            # Handle global events first
+            self.handle_global_events(event)
+        
         py.display.flip()
         return True
-
-
 
     def run_game(self):
         running = True
@@ -263,6 +234,7 @@ class Game:
             running = self.states[self.game_state]()
         
         py.quit()
+
 
 if __name__ == "__main__":
     game = Game()
