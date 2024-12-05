@@ -2,7 +2,7 @@
 # CPTR-215 Final Project - Wizard Run Game
 # 11/07/2024 - started framework
 # 11/12/2024 - cont
-# test
+
 # References
 # https://www.py.org/docs/
 # https://www.py.org/docs/ref/event.html
@@ -24,10 +24,6 @@ import sys
 from threading import Thread
 
 
-# Test comment
-
-
-
 class ScoreManager:
     pass
 
@@ -36,7 +32,19 @@ class CharacterOptions(Enum):
     Knight = 'Game Images/Characters/knight_running_R.gif'
     Dark_Knight = 'Game Images/Characters/Dark-Knight_running_R.gif'
 
+class Obstacle(py.sprite.Sprite):
+    def __init__(self, x, y, image_path):
+        super().__init__()
+        self.image = py.image.load(image_path).convert_alpha()
+        # this scales the image to an appropriate size - adjust these numbers as needed Alden
+        self.image = py.transform.scale(self.image, (50, 50))  
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.speed = 5
 
+    def update(self):
+        self.rect.x -= self.speed  # move left
+        if self.rect.right < 0:  # if off screen
+            self.kill()
 
 class Character(py.sprite.Sprite):
     # Sprite Sheet to animate Characters
@@ -74,6 +82,13 @@ class Game:
         self.score = 0
         self.selected_character = None
         
+        self.obstacles = py.sprite.Group()
+        self.obstacle_timer = 0
+        self.obstacle_spawn_time = 90  # frames between obstacle spawns
+
+        self.obstacle_image = "Game Images/Backgrounds&Objects/boxes.gif"
+
+
         # Game states
         self.states = {
             GameState.MENU: self.menu_state,
@@ -171,41 +186,36 @@ class Game:
 
     def running_state(self):
         bg = py.image.load("Game Images/Test Screens/RunningState.jpg")
+
         self.screen.blit(bg, (0, 0))
         for event in py.event.get():
             if event.type == py.QUIT:
                 return False
             if event.type == py.KEYDOWN:
-                if event.key == py.K_SPACE:
-                    # Handle jump
                     pass
-            # TEST EVENT TO CHANGE SCREENS
-            if event.type == py.KEYDOWN:
-                if event.key == py.K_1:
-                    self.game_state = GameState.MENU
-                if event.key == py.K_2:
-                    self.game_state = GameState.CHARACTER_SELECT
-                if event.key == py.K_3:
-                    self.game_state = GameState.RUNNING
-                if event.key == py.K_4:
-                    self.game_state = GameState.BOSS_FIGHT
-                if event.key == py.K_5:
-                    self.game_state = GameState.GAME_OVER
-        
-        # Update score
+
+        # Debug obstacle creation
+        self.obstacle_timer += 1
+        if self.obstacle_timer >= self.obstacle_spawn_time:
+            new_obstacle = Obstacle(800, 450, self.obstacle_image)  # Adjust y position
+            self.obstacles.add(new_obstacle)
+
+            self.obstacle_timer = 0
+
+        # update score
         self.score += 1
-        
-        # Check for boss fight transition
-        if self.score >= 1000:  # Adjust threshold as needed
+
+        # check for boss fight transition
+        if self.score >= 1000:
             self.game_state = GameState.BOSS_FIGHT
-        
-        # Update background scroll
-        # Update character animation
-        # Update obstacles
-        # Check collisions
-        # Draw everything
+
+        # update obstacles
+        self.obstacles.update()
+        self.obstacles.draw(self.screen)
+
         py.display.flip()
         return True
+
 
     def boss_fight_state(self):
         bg = py.image.load("Game Images/Test Screens/BossFightState.jpg")
