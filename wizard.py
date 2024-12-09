@@ -292,7 +292,8 @@ class Game:
         #
         #if self.score >= 1000:
         #    self.game_state = GameState.BOSS_FIGHT
-        
+        self.obstacles.update()
+        self.obstacles.draw(self.screen)
         py.display.flip()
         return True
 
