@@ -27,9 +27,6 @@ import pygame as py
 import random
 from enum import Enum
 
-
-
-
 class GameState(Enum):
     MENU = "menu"
     CHARACTER_SELECT = "character_select"
@@ -41,16 +38,23 @@ class Character(py.sprite.Sprite):
     def __init__(self, character_image = "Game Images/Characters/knight_running_R.gif"):
         py.sprite.Sprite.__init__(self)
         self.player_X = 50
-        self.player_Y = 450
+        self.player_Y = 345
         self.Y_change = 0
-        self.gravity = 1
+        self.gravity = .8
         self.character_image = character_image
+        self.is_jumping = False
+        self.jump_velocity = 15
+        self.ground_level = 345
+
+        # Movement variables
+        self.X_change = 0
+        self.move_speed = 5
 
 class Obstacle(py.sprite.Sprite):
     def __init__(self, x, y, image_path="Game Images/Backgrounds&Objects/rock.gif"):
         super().__init__()
         self.image = py.image.load(image_path).convert_alpha()
-        self.image = py.transform.scale(self.image, (50, 50))  # obstacle size
+        self.image = py.transform.scale(self.image, (70, 70))  # obstacle size
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -60,7 +64,6 @@ class Obstacle(py.sprite.Sprite):
         self.rect.x -= self.speed  # movement of obstacle going left
         if self.rect.right < 0:  # delete the obstacle when it's off the screen
             self.kill()
-
 
 class Game_Images():
     pass
@@ -98,7 +101,6 @@ class Game():
             GameState.BOSS_FIGHT: self.boss_fight_state,
             GameState.GAME_OVER: self.game_over_state,
         }
-
 
 
     def toggle_fullscreen(self):
@@ -147,7 +149,7 @@ class Game():
         ground = py.transform.scale(ground, (scaled_width, scaled_height))
 
         # Update scroll position
-        scroll_speed = 3
+        scroll_speed = 5
         self.ground_scroll_x = (self.ground_scroll_x + scroll_speed) % scaled_width
 
         # Blit the ground image twice
@@ -156,23 +158,27 @@ class Game():
 
 
     def draw_character(self):
-        #self.character = py.image.load(self.character.character_image)
-        #self.screen.blit(self.character, (0, 0))
-        py.draw.rect(self.screen, (255, 0, 0), [self.character.player_X, self.character.player_Y, 20, 20])
-
-    def jump(self, y_change):
-        if self.character.Y_change > 0 or self.character.player_Y < 200:
-            self.character.player_Y -= y_change
+        if self.game_state == GameState.RUNNING or self.game_state == GameState.BOSS_FIGHT:
+        
+            character_image = py.image.load(self.character.character_image).convert_alpha()
+            character_image = py.transform.scale(character_image, (150, 150))
+            self.screen.blit(character_image, (self.character.player_X, self.character.player_Y))
 
     def menu_state(self):
+        '''
+        '''
         for event in py.event.get():
             self.handle_global_events(event)
             if event.type == py.QUIT:
                 return False
-        self.screen.fill((0, 0, 0))  # Black screen for the menu
+        bg = py.image.load("Game Images/Backgrounds&Objects/Start_Menu_Placeholder.jpg").convert_alpha()
+        bg = py.transform.scale(bg, self.screen.get_size())
+        self.screen.blit(bg, (0,0))
         return True
 
     def character_select_state(self):
+        '''
+        '''
         for event in py.event.get():
             self.handle_global_events(event)
             if event.type == py.QUIT:
@@ -181,30 +187,38 @@ class Game():
         return True
 
     def running_state(self):
+        '''
+        '''
         for event in py.event.get():
             self.handle_global_events(event)
             if event.type == py.QUIT:
                 return False
         
         self.obstacle_spawn_timer += 1
-        if self.obstacle_spawn_timer > 100:  # spawn frequency
-            y_position = self.screen.get_height() - 100  # based on ground height
+        if self.obstacle_spawn_timer > random.randint(100, 300):  # spawn frequency
+            y_position = self.screen.get_height() - 115  # based on ground height
             obstacle = Obstacle(self.screen.get_width(), y_position)
             self.obstacles.add(obstacle)
             self.obstacle_spawn_timer = 0
 
-        self.screen.fill((0, 255, 0))  # Green screen for running state
         return True
 
     def boss_fight_state(self):
+        '''
+        '''
         for event in py.event.get():
             self.handle_global_events(event)
             if event.type == py.QUIT:
                 return False
-        self.screen.fill((255, 0, 0))  # Red screen for boss fight
+        bg = py.image.load("Game Images/Backgrounds&Objects/FOREST.jpg").convert_alpha()
+        bg = py.transform.scale(bg, self.screen.get_size())
+        self.screen.fill((0,0,0))
+        self.screen.blit(bg, (0,0))
         return True
 
     def game_over_state(self):
+        '''
+        '''
         for event in py.event.get():
             self.handle_global_events(event)
             if event.type == py.QUIT:
@@ -212,31 +226,38 @@ class Game():
         self.screen.fill((50, 50, 50))  # Gray screen for game over
         return True
 
-
     def handle_global_events(self, event):
+        '''
+        '''
+
+        if self.game_state == GameState.MENU:
+            if event.type == py.MOUSEBUTTONUP:
+                mouse_x, mouse_y = py.mouse.get_pos()
+                if 648 <= mouse_x <= 928 and 285 <= mouse_y <= 345:
+                    self.game_state = GameState.RUNNING
+
+
+
+
         # Global event handling that applies to all game states
         if event.type == py.KEYDOWN:
             if event.key == py.K_F11 or (event.key == py.K_f and py.key.get_mods() & py.KMOD_ALT) or event.key == py.K_ESCAPE:
                 # Toggle fullscreen with F11 or Alt+F
                 self.toggle_fullscreen()
             
-            if event.key == py.KEYDOWN:
-                if event.key == py.K_SPACE and self.character.Y_change == 0:
-                    self.character.Y_change = 18
-                    
-                    if self.character.player_Y < 450:
-                        self.character.player_Y -= self.character.Y_change
-                        self.character.Y_change -= self.character.gravity
+            # Handle Character Movement
+            if event.key == py.K_SPACE and not self.character.is_jumping:
+                self.character.is_jumping = True
+                self.character.Y_change = self.character.jump_velocity
 
-                    if self.character.player_Y > 450:
-                        self.character.player_Y = 450
+            elif event.key == py.K_d or event.key == py.K_RIGHT:
+                self.character.X_change = self.character.move_speed
 
-                    if self.character.player_Y == 200 and self.character.Y_change < 0:
-                        self.character.Y_change = 0
-
-
-
-
+            elif event.key == py.K_a or event.key == py.K_LEFT:
+                if self.game_state == GameState.RUNNING:
+                    self.character.X_change = -self.character.move_speed * 1.5
+                elif self.game_state == GameState.BOSS_FIGHT:
+                    self.character.X_change = -self.character.move_speed
 
             # Navigation shortcuts (delete later)
             if event.key == py.K_1:
@@ -249,7 +270,42 @@ class Game():
                 self.game_state = GameState.BOSS_FIGHT
             if event.key == py.K_5:
                 self.game_state = GameState.GAME_OVER
+        
+        if event.type == py.KEYUP:
+            if event.key == py.K_d or event.key == py.K_RIGHT or event.key == py.K_a or event.key == py.K_LEFT:
+                self.character.X_change = 0
 
+    def update_character_position(self):
+        if self.character.is_jumping:
+            # Apply jump velocity
+            self.character.player_Y -= self.character.Y_change
+            
+            # Apply gravity
+            self.character.Y_change -= self.character.gravity
+            
+            # Check if character has returned to ground
+            if self.character.player_Y >= self.character.ground_level:
+                self.character.player_Y = self.character.ground_level
+                self.character.Y_change = 0
+                self.character.is_jumping = False
+
+    def update_character_horizontal_position(self):
+        if self.character.X_change == 0 and self.game_state == GameState.RUNNING:
+            self.character.X_change = -5
+
+        # Update horizontal position
+        self.character.player_X += self.character.X_change
+        
+        # Get screen width
+        screen_width = self.screen.get_width()
+        character_width = 100  # Match the width in draw_character method
+        
+        # Prevent character from moving off screen
+        if self.character.player_X < 0:
+            self.character.player_X = 0
+        
+        if self.character.player_X > screen_width - character_width:
+            self.character.player_X = screen_width - character_width
 
     def run_game(self):
         running = True
@@ -258,12 +314,14 @@ class Game():
             self.draw_character()
             self.obstacles.update()
             self.obstacles.draw(self.screen)
+            self.update_character_position()
+            self.update_character_horizontal_position()
+
             py.display.flip()
             self.clock.tick(60)
             running = self.states[self.game_state]()
             
         py.quit()
-
 
 
 
