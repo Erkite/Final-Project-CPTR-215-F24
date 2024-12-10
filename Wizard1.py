@@ -46,6 +46,21 @@ class Character(py.sprite.Sprite):
         self.gravity = 1
         self.character_image = character_image
 
+class Obstacle(py.sprite.Sprite):
+    def __init__(self, x, y, image_path="Game Images/Backgrounds&Objects/rock.gif"):
+        super().__init__()
+        self.image = py.image.load(image_path).convert_alpha()
+        self.image = py.transform.scale(self.image, (50, 50))  # obstacle size
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.speed = 5  # speed of obstacle
+
+    def update(self):
+        self.rect.x -= self.speed  # movement of obstacle going left
+        if self.rect.right < 0:  # delete the obstacle when it's off the screen
+            self.kill()
+
 
 class Game_Images():
     pass
@@ -71,6 +86,9 @@ class Game():
         self.is_fullscreen = False
 
         self.character = Character()
+
+        self.obstacles = py.sprite.Group()
+        self.obstacle_spawn_timer = 0
 
         # Game states
         self.states = {
@@ -167,6 +185,14 @@ class Game():
             self.handle_global_events(event)
             if event.type == py.QUIT:
                 return False
+        
+        self.obstacle_spawn_timer += 1
+        if self.obstacle_spawn_timer > 100:  # spawn frequency
+            y_position = self.screen.get_height() - 100  # based on ground height
+            obstacle = Obstacle(self.screen.get_width(), y_position)
+            self.obstacles.add(obstacle)
+            self.obstacle_spawn_timer = 0
+
         self.screen.fill((0, 255, 0))  # Green screen for running state
         return True
 
@@ -209,7 +235,7 @@ class Game():
                         self.character.Y_change = 0
 
 
-                
+
 
 
             # Navigation shortcuts (delete later)
@@ -230,6 +256,8 @@ class Game():
         while running:
             self.draw_background()
             self.draw_character()
+            self.obstacles.update()
+            self.obstacles.draw(self.screen)
             py.display.flip()
             self.clock.tick(60)
             running = self.states[self.game_state]()
