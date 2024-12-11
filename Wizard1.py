@@ -35,20 +35,25 @@ class GameState(Enum):
     GAME_OVER = "game_over"
 
 class Character(py.sprite.Sprite):
-    def __init__(self, character_image = "Game Images/Characters/knight_running_R.gif"):
-        py.sprite.Sprite.__init__(self)
+    def __init__(self, character_image="Game Images/Characters/knight_running_R.gif"):
+        super().__init__()
         self.player_X = 50
         self.player_Y = 345
+        self.character_width = 150
+        self.character_height = 150
+        self.rect = py.Rect(self.player_X, self.player_Y, self.character_width, self.character_height)
         self.Y_change = 0
-        self.gravity = .8
+        self.gravity = 0.8
         self.character_image = character_image
         self.is_jumping = False
         self.jump_velocity = 15
         self.ground_level = 345
-
-        # Movement variables
         self.X_change = 0
         self.move_speed = 5
+
+    def update_rect(self):
+        self.rect.topleft = (self.player_X, self.player_Y)
+
 
 class Obstacle(py.sprite.Sprite):
     def __init__(self, x, y, image_path="Game Images/Backgrounds&Objects/rock.gif"):
@@ -316,12 +321,18 @@ class Game():
             self.obstacles.draw(self.screen)
             self.update_character_position()
             self.update_character_horizontal_position()
-
+            self.character.update_rect()  # Update character rect for collision detection
+            
+            # Check for collisions
+            if py.sprite.spritecollideany(self.character, self.obstacles):
+                self.game_state = GameState.GAME_OVER
+            
             py.display.flip()
             self.clock.tick(60)
             running = self.states[self.game_state]()
-            
+        
         py.quit()
+
 
 
 
