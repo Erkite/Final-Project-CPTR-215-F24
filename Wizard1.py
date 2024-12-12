@@ -35,7 +35,7 @@ class GameState(Enum):
     GAME_OVER = "game_over"
 
 class Character(py.sprite.Sprite):
-    def __init__(self, character_image="Game Images/Characters/knight_running_R.gif"):
+    def __init__(self, character_image="Game Images/Characters/Knight_1_Right_Running.png"):
         super().__init__()
         self.player_X = 50
         self.player_Y = 345
@@ -69,6 +69,11 @@ class Obstacle(py.sprite.Sprite):
         self.rect.x -= self.speed  # movement of obstacle going left
         if self.rect.right < 0:  # delete the obstacle when it's off the screen
             self.kill()
+
+class Scores():
+    
+    
+    pass
 
 class Game_Images():
     pass
