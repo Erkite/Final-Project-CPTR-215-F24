@@ -38,7 +38,7 @@ class Character(py.sprite.Sprite):
         self.player_X = 50
         self.player_Y = 330
         self.Y_change = 0
-        self.gravity = 0.85
+        self.gravity = 0.7
         self.character = character
         self.is_jumping = False
         self.jump_velocity = 15
@@ -200,6 +200,10 @@ class Game:
         self.ground_scroll_x = 0
     def _load_and_scale_image(self, path, use_alpha=False):
         """Helper method to load and scale images efficiently"""
+        if "Game_Background_Extended" in path:
+            img = py.image.load(path).convert_alpha()
+            return py.transform.scale(img, (8640, 540))
+
         if use_alpha:
             img = py.image.load(path).convert_alpha()
         else:
@@ -303,15 +307,17 @@ class Game:
         """
         if self.game_state == GameState.RUNNING:
             # Load Background
-            bg = py.image.load("Game Images/Backgrounds&Objects/Game_Background_Extended.jpg")
-            bg_height = self.screen.get_height()
-            bg_width = int(bg.get_width() * (bg_height / bg.get_height()))
-            bg = py.transform.scale(bg, (bg_width, bg_height))
+            bg = self.cached_images['background']
             
             scroll_speed = 3
-            self.bg_scroll_x = (self.bg_scroll_x + scroll_speed) % bg_width
+            screen_width = self.screen.get_width()
+            
+            # Use the full width of the background image for scrolling
+            self.bg_scroll_x = (self.bg_scroll_x + scroll_speed) % bg.get_width()
+            
+            # Blit the background twice to create a continuous scroll
             self.screen.blit(bg, (-self.bg_scroll_x, 0))
-            self.screen.blit(bg, (bg_width - self.bg_scroll_x, 0))
+            self.screen.blit(bg, (bg.get_width() - self.bg_scroll_x, 0))
 
             self.draw_ground()
 
@@ -377,10 +383,12 @@ class Game:
         else:
             frame = 1
 
-
         bg = py.image.load(f"Game Images/Backgrounds&Objects/Main_Menu_{frame}.jpg").convert_alpha()
         bg = py.transform.scale(bg, self.screen.get_size())
         self.screen.blit(bg, (0,0))
+
+        #character_image = py.transform.scale(self.character.character_image, (132, 165))
+        #self.screen.blit(character_image, (self.player_X, self.player_Y))
 
     def character_select_state(self):
         """
