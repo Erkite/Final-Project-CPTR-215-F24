@@ -51,7 +51,7 @@ class Character(py.sprite.Sprite):
         # Character Attributes
         self.frame = 1
         self.facing = 'Right'
-        self.state = 'Resting'
+        self.state = 'Running'
         
         # Image-related attributes
         self.character_image = None
@@ -163,7 +163,6 @@ class Game:
             'background': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_Extended.jpg"),
             'forest': self._load_and_scale_image("Game Images/Backgrounds&Objects/FOREST.jpg"),
             'ground': self._load_and_scale_image("Game Images/Backgrounds&Objects/ground.png", True),
-            'menu': self._load_and_scale_image("Game Images/Backgrounds&Objects/Start_Menu_Placeholder.jpg"),
             'transition': self._load_and_scale_image("Game Images/Backgrounds&Objects/transition.png", True)
         }
 
@@ -181,6 +180,7 @@ class Game:
         self.is_fullscreen = False
         self.clock = py.time.Clock()
         self.game_state = GameState.MENU
+        self.dragon_eye_open = False
         self.needs_redraw = True
         self.running = True
         self.timer = 0
@@ -229,7 +229,14 @@ class Game:
                 self.running = False
                 return
 
+            if event.type == py.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = py.mouse.get_pos()
+                if 306 <= mouse_x <= 670 and 376 <= mouse_y <= 501:
+                    self.dragon_eye_open = True
+                
+
             if event.type == py.MOUSEBUTTONUP:
+                self.dragon_eye_open = False
                 mouse_x, mouse_y = py.mouse.get_pos()
                 if self.game_state == GameState.MENU:
                     if 672 <= mouse_x <= 927 and 213 <= mouse_y <= 276:
@@ -365,7 +372,13 @@ class Game:
         """
         Menu state rendering
         """
-        bg = py.image.load("Game Images/Backgrounds&Objects/Main_Menu.jpg").convert_alpha()
+        if self.dragon_eye_open:
+            frame = 2
+        else:
+            frame = 1
+
+
+        bg = py.image.load(f"Game Images/Backgrounds&Objects/Main_Menu_{frame}.jpg").convert_alpha()
         bg = py.transform.scale(bg, self.screen.get_size())
         self.screen.blit(bg, (0,0))
 
