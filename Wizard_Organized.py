@@ -28,6 +28,7 @@ class GameState(enum.Enum):
     RUNNING = "running"
     BOSS_FIGHT = "boss_fight"
     GAME_OVER = "game_over"
+    CONTROLS = "controls"
 
 class Character(py.sprite.Sprite):
     path = 'Game Images/Characters/{}_{}_{}_{}.png'
@@ -43,6 +44,7 @@ class Character(py.sprite.Sprite):
         self.is_jumping = False
         self.jump_velocity = 15
         self.ground_level = 330
+        self.image_changer_time = 12
 
         # Movement variables
         self.X_change = 0
@@ -51,7 +53,7 @@ class Character(py.sprite.Sprite):
         # Character Attributes
         self.frame = 1
         self.facing = 'Right'
-        self.state = 'Running'
+        self.state = 'Resting'
         
         # Image-related attributes
         self.character_image = None
@@ -63,7 +65,7 @@ class Character(py.sprite.Sprite):
         """
         self.timer += 1
 
-        if self.timer >= 12:
+        if self.timer >= self.image_changer_time:
             self.timer = 0
             self.frame = 2 if self.frame == 1 else 1
 
@@ -142,6 +144,7 @@ class Obstacle(py.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
         self.speed = 5  # speed of obstacle
+        self.width = 70
 
     def update(self):
         """
@@ -170,6 +173,7 @@ class Game:
         self.states = {
             GameState.MENU: self.menu_state,
             GameState.CHARACTER_SELECT: self.character_select_state,
+            GameState.CONTROLS: self.controls_state, 
             GameState.RUNNING: self.running_state,
             GameState.BOSS_FIGHT: self.boss_fight_state,
             GameState.GAME_OVER: self.game_over_state,
@@ -243,7 +247,9 @@ class Game:
                 self.dragon_eye_open = False
                 mouse_x, mouse_y = py.mouse.get_pos()
                 if self.game_state == GameState.MENU:
-                    if 672 <= mouse_x <= 927 and 213 <= mouse_y <= 276:
+                    if 820 <= mouse_x <= 910 and 50 <= mouse_y <= 84:
+                        self.game_state = GameState.CONTROLS
+                    elif 672 <= mouse_x <= 927 and 213 <= mouse_y <= 276:
                         self.transition = True
                     elif 696 <= mouse_x <= 896 and 335 <= mouse_y <= 377:
                         self.running = False
@@ -251,7 +257,7 @@ class Game:
                         self.game_state = GameState.CHARACTER_SELECT
 
                 elif self.game_state == GameState.CHARACTER_SELECT:
-                    if 26 <= mouse_x <= 128 and 28 <= mouse_y <= 69:
+                    if 74 <= mouse_x <= 176 and 89 <= mouse_y <= 133:
                         self.game_state = GameState.MENU
                     elif 79 <= mouse_x <= 308 and 189 <= mouse_y <= 467:
                         self.character.character = 'Knight'
@@ -263,9 +269,19 @@ class Game:
                         self.character.character = 'Dark_Knight'
                         self.game_state = GameState.MENU
 
+                elif self.game_state == GameState.CONTROLS:
+                    if 26 <= mouse_x <= 128 and 28 <= mouse_y <= 69:
+                        self.game_state = GameState.MENU
+
+                elif self.game_state == GameState.GAME_OVER:
+                    if 422 <= mouse_x <= 637 and 347 <= mouse_y <= 422:
+                        self.game_state = GameState.RUNNING
+                    if 397 <= mouse_x <= 561 and 455 <= mouse_y <= 529:
+                        self.game_state = GameState.MENU
+
+
                 
             if event.type == py.KEYDOWN:
-
                 # Navigation shortcuts (delete later)
                 keys = py.key.get_pressed()
                 if keys[py.K_1]:
@@ -278,23 +294,26 @@ class Game:
                     self.transition = True
                 elif keys[py.K_5]:
                     self.game_state = GameState.GAME_OVER
+                elif keys[py.K_6]:
+                    self.game_state = GameState.CONTROLS
 
                 # Handle Character Movement
-                if (keys[py.K_SPACE] or keys[py.K_UP]) and not self.character.is_jumping:
-                    self.character.is_jumping = True
-                    self.character.Y_change = self.character.jump_velocity
-                    self.character.state = 'Running'
-                if (keys[py.K_d] or keys[py.K_RIGHT]):
-                    self.character.X_change = self.character.move_speed
-                    self.character.facing = 'Right'
-                    self.character.state = 'Running'
-                if (keys[py.K_a] or keys[py.K_LEFT]):
-                    self.character.facing = 'Left'
-                    self.character.state = 'Running'
-                    if self.game_state == GameState.RUNNING:
-                        self.character.X_change = -self.character.move_speed * 1.7
-                    elif self.game_state == GameState.BOSS_FIGHT:
-                        self.character.X_change = -self.character.move_speed
+                if self.game_state == GameState.BOSS_FIGHT or self.game_state == GameState.RUNNING:
+                    if (keys[py.K_SPACE] or keys[py.K_UP]) and not self.character.is_jumping:
+                        self.character.is_jumping = True
+                        self.character.Y_change = self.character.jump_velocity
+                        self.character.state = 'Running'
+                    if (keys[py.K_d] or keys[py.K_RIGHT]):
+                        self.character.X_change = self.character.move_speed
+                        self.character.facing = 'Right'
+                        self.character.state = 'Running'
+                    if (keys[py.K_a] or keys[py.K_LEFT]):
+                        self.character.facing = 'Left'
+                        self.character.state = 'Running'
+                        if self.game_state == GameState.RUNNING:
+                            self.character.X_change = -self.character.move_speed * 1.7
+                        elif self.game_state == GameState.BOSS_FIGHT:
+                            self.character.X_change = -self.character.move_speed
 
             if event.type == py.KEYUP:
                 #self.character.state = 'Resting'
@@ -387,8 +406,12 @@ class Game:
         bg = py.transform.scale(bg, self.screen.get_size())
         self.screen.blit(bg, (0,0))
 
-        #character_image = py.transform.scale(self.character.character_image, (132, 165))
-        #self.screen.blit(character_image, (self.player_X, self.player_Y))
+        self.character.facing = 'Right'
+        self.character.state = 'Resting'
+        self.character.image_changer_time = 24
+        character_image = py.image.load(self.character.change_image()).convert_alpha()
+        character_image = py.transform.scale(character_image, (176, 220))
+        self.screen.blit(character_image, (65, 182))
 
     def character_select_state(self):
         """
@@ -407,17 +430,43 @@ class Game:
         bg = py.transform.scale(bg, self.screen.get_size())
         self.screen.blit(bg, (0,0))
 
+    def controls_state(self):
+        bg = py.image.load(f"Game Images/Backgrounds&Objects/Controls.jpg").convert_alpha()
+        bg = py.transform.scale(bg, self.screen.get_size())
+        self.screen.blit(bg, (0,0))
+
     def running_state(self):
         """
-        Running state logic for spawning obstacles
+        Running state logic for spawning obstacles and checking collisions
         """
+        self.character.state = 'Running'
+        # Spawn obstacles
         self.obstacle_spawn_timer += 1
-        if self.obstacle_spawn_timer > random.randint(100, 300):  # spawn frequency
-            y_position = self.screen.get_height() - 115  # based on ground height
+        if self.obstacle_spawn_timer > random.randint(100, 300):
+            y_position = self.screen.get_height() - 115
             obstacle = Obstacle(self.screen.get_width(), y_position)
             self.obstacles.add(obstacle)
             self.obstacle_spawn_timer = 0
-
+            
+        # Check for collisions with adjusted hitboxes
+        for obstacle in self.obstacles:
+            # adding horizontal padding to make collision match visuals
+            char_left = self.character.player_X + 40  # adjust character's left side hitbox
+            char_right = self.character.player_X + 90  # adjust the character's right side hitbox
+            char_bottom = self.character.player_Y + 150  # adjust character's bottom hitbox
+            
+            # Obstacle hitbox adjustments
+            obstacle_left = obstacle.rect.x + 10  # added padding to obstacle's left side
+            obstacle_right = obstacle.rect.x + obstacle.width - 10  # reduce obstacle's right side
+            obstacle_top = obstacle.rect.y + 10  # add padding to obstacle's top
+            
+            # check if character overlaps with obstacle
+            if (char_left < obstacle_right and 
+                char_right > obstacle_left and 
+                char_bottom > obstacle_top):
+                self.game_state = GameState.GAME_OVER
+                break
+    
     def boss_fight_state(self):
         if self.needs_redraw or not self.last_frame:
             self.screen.fill((0, 0, 0))
@@ -431,7 +480,11 @@ class Game:
         """
         Game over state rendering
         """
-        self.screen.fill((50, 50, 50))  # Gray screen for game over
+
+        bg = py.image.load(f"Game Images/Backgrounds&Objects/Game_Over_Overlay_2.png").convert_alpha()
+        bg = py.transform.scale(bg, self.screen.get_size())
+        self.screen.blit(bg, (0,0))
+        
 
     def run_game(self):
         """
