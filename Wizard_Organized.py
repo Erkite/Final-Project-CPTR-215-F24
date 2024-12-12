@@ -1,3 +1,23 @@
+# Alden Thacker & Peyton Wall
+# CPTR-215 Final Project - Wizard Run Game
+# 11/07/2024 - started framework
+# 11/12/2024 - cont
+# 12/02/2024 - 
+
+# References
+# https://www.py.org/docs/
+# https://www.py.org/docs/ref/event.html
+# https://www.youtube.com/watch?v=ZV8TNrwqG1Y
+
+# Sprites and Groups
+# https://www.pygame.org/docs/ref/sprite.html
+# https://www.youtube.com/watch?v=4TfZjhw0J-8
+# http://www.codingwithruss.com/pygame/sprite-class-and-sprite-groups-explained/
+
+# Collisions
+# https://www.youtube.com/watch?v=BHr9jxKithk
+# http://www.codingwithruss.com/pygame/top-3-collision-types-in-pygame/
+
 import enum
 import pygame as py
 import random
@@ -139,6 +159,14 @@ class Game:
         py.display.set_caption("Wizard Run")
         py.font.Font('freesansbold.ttf', 14)
 
+        self.cached_images = {
+            'background': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_Extended.jpg"),
+            'forest': self._load_and_scale_image("Game Images/Backgrounds&Objects/FOREST.jpg"),
+            'ground': self._load_and_scale_image("Game Images/Backgrounds&Objects/ground.png", True),
+            'menu': self._load_and_scale_image("Game Images/Backgrounds&Objects/Start_Menu_Placeholder.jpg"),
+            'transition': self._load_and_scale_image("Game Images/Backgrounds&Objects/transition.png", True)
+        }
+
         # Call GameStates
         self.states = {
             GameState.MENU: self.menu_state,
@@ -153,7 +181,10 @@ class Game:
         self.is_fullscreen = False
         self.clock = py.time.Clock()
         self.game_state = GameState.MENU
+        self.needs_redraw = True
         self.running = True
+        self.timer = 0
+        self.frame = 1
 
         # Initialize Character
         self.character = Character()
@@ -167,26 +198,65 @@ class Game:
         self.transition_scroll_x = 0
         self.bg_scroll_x = 0
         self.ground_scroll_x = 0
+    def _load_and_scale_image(self, path, use_alpha=False):
+        """Helper method to load and scale images efficiently"""
+        if use_alpha:
+            img = py.image.load(path).convert_alpha()
+        else:
+            img = py.image.load(path).convert()
+        return py.transform.scale(img, self.screen.get_size())
 
     def handle_global_events(self):
-        """
-        Handle global game events including quitting and key presses
-        """
+        ''' 
+        Handles Quit and Resizing (Turned Off) functionality, as well as event queue for all
+        keypress and mouseclick events.
+        '''
+        # Turned Off
+        '''
+        self.is_fullscreen = not self.is_fullscreen
+        if self.is_fullscreen:
+            # Store the current window size before going fullscreen
+            self.windowed_size = self.screen.get_size()
+            # Switch to fullscreen
+            self.screen = py.display.set_mode((0, 0), py.FULLSCREEN)
+        else:
+            # Return to windowed mode with previous size
+            self.screen = py.display.set_mode(self.windowed_size, py.RESIZABLE)
+        '''
+
         for event in py.event.get():
             if event.type == py.QUIT:
                 self.running = False
                 return
 
-            if self.game_state == GameState.MENU:
-                if event.type == py.MOUSEBUTTONUP:
-                    mouse_x, mouse_y = py.mouse.get_pos()
-                    if 648 <= mouse_x <= 928 and 285 <= mouse_y <= 345:
+            if event.type == py.MOUSEBUTTONUP:
+                mouse_x, mouse_y = py.mouse.get_pos()
+                if self.game_state == GameState.MENU:
+                    if 672 <= mouse_x <= 927 and 213 <= mouse_y <= 276:
                         self.transition = True
+                    elif 696 <= mouse_x <= 896 and 335 <= mouse_y <= 377:
+                        self.running = False
+                    elif 43 <= mouse_x <= 235 and 184 <= mouse_y <= 412:
+                        self.game_state = GameState.CHARACTER_SELECT
+
+                elif self.game_state == GameState.CHARACTER_SELECT:
+                    if 26 <= mouse_x <= 128 and 28 <= mouse_y <= 69:
+                        self.game_state = GameState.MENU
+                    elif 79 <= mouse_x <= 308 and 189 <= mouse_y <= 467:
+                        self.character.character = 'Knight'
+                        self.game_state = GameState.MENU
+                    elif 341 <= mouse_x <= 583 and 182 <= mouse_y <= 467:
+                        self.character.character = 'Wizard'
+                        self.game_state = GameState.MENU
+                    elif 622 <= mouse_x <= 861 and 177 <= mouse_y <= 474:
+                        self.character.character = 'Dark_Knight'
+                        self.game_state = GameState.MENU
+
                 
             if event.type == py.KEYDOWN:
+
+                # Navigation shortcuts (delete later)
                 keys = py.key.get_pressed()
-                
-                # Navigation shortcuts (for development)
                 if keys[py.K_1]:
                     self.game_state = GameState.MENU
                 elif keys[py.K_2]:
@@ -199,10 +269,25 @@ class Game:
                     self.game_state = GameState.GAME_OVER
 
                 # Handle Character Movement
-                self.character.handle_movement(keys)
+                if (keys[py.K_SPACE] or keys[py.K_UP]) and not self.character.is_jumping:
+                    self.character.is_jumping = True
+                    self.character.Y_change = self.character.jump_velocity
+                    self.character.state = 'Running'
+                if (keys[py.K_d] or keys[py.K_RIGHT]):
+                    self.character.X_change = self.character.move_speed
+                    self.character.facing = 'Right'
+                    self.character.state = 'Running'
+                if (keys[py.K_a] or keys[py.K_LEFT]):
+                    self.character.facing = 'Left'
+                    self.character.state = 'Running'
+                    if self.game_state == GameState.RUNNING:
+                        self.character.X_change = -self.character.move_speed * 1.7
+                    elif self.game_state == GameState.BOSS_FIGHT:
+                        self.character.X_change = -self.character.move_speed
 
             if event.type == py.KEYUP:
-                if event.key in (py.K_d, py.K_RIGHT, py.K_a, py.K_LEFT):
+                #self.character.state = 'Resting'
+                if event.key == py.K_d or event.key == py.K_RIGHT or event.key == py.K_a or event.key == py.K_LEFT:
                     self.character.X_change = 0
 
     def draw_background(self):
@@ -280,15 +365,26 @@ class Game:
         """
         Menu state rendering
         """
-        bg = py.image.load("Game Images/Backgrounds&Objects/Start_Menu_Placeholder.jpg").convert_alpha()
+        bg = py.image.load("Game Images/Backgrounds&Objects/Main_Menu.jpg").convert_alpha()
         bg = py.transform.scale(bg, self.screen.get_size())
-        self.screen.blit(bg, (0, 0))
+        self.screen.blit(bg, (0,0))
 
     def character_select_state(self):
         """
         Character selection state rendering
         """
-        self.screen.fill((100, 100, 200))  # Blueish screen for character select
+        self.timer += 1
+
+        if self.timer >= 24:
+            self.timer = 0
+            if self.frame == 1:
+                self.frame = 2
+            else:
+                self.frame = 1
+
+        bg = py.image.load(f"Game Images/Backgrounds&Objects/Character_Select_{self.frame}.png").convert_alpha()
+        bg = py.transform.scale(bg, self.screen.get_size())
+        self.screen.blit(bg, (0,0))
 
     def running_state(self):
         """
@@ -302,13 +398,13 @@ class Game:
             self.obstacle_spawn_timer = 0
 
     def boss_fight_state(self):
-        """
-        Boss fight state rendering
-        """
-        bg = py.image.load("Game Images/Backgrounds&Objects/FOREST.jpg").convert_alpha()
-        bg = py.transform.scale(bg, self.screen.get_size())
-        self.screen.fill((0, 0, 0))
-        self.screen.blit(bg, (0, 0))
+        if self.needs_redraw or not self.last_frame:
+            self.screen.fill((0, 0, 0))
+            self.screen.blit(self.cached_images['forest'], (0, 0))
+            self.last_frame = self.screen.copy()
+            self.needs_redraw = False
+        else:
+            self.screen.blit(self.last_frame, (0, 0))
 
     def game_over_state(self):
         """
