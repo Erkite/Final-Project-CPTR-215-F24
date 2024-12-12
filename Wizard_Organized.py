@@ -421,25 +421,23 @@ class Game:
             
         # Check for collisions with adjusted hitboxes
         for obstacle in self.obstacles:
-            # Add horizontal padding to make collision match visual sprite
-            char_left = self.character.player_X + 40  # Adjust character's left side hitbox
-            char_right = self.character.player_X + 90  # Adjust character's right side hitbox
-            char_bottom = self.character.player_Y + 150  # Adjust character's bottom hitbox
+            # adding horizontal padding to make collision match visuals
+            char_left = self.character.player_X + 40  # adjust character's left side hitbox
+            char_right = self.character.player_X + 90  # adjust the character's right side hitbox
+            char_bottom = self.character.player_Y + 150  # adjust character's bottom hitbox
             
             # Obstacle hitbox adjustments
-            obstacle_left = obstacle.rect.x + 10  # Add padding to obstacle's left side
-            obstacle_right = obstacle.rect.x + obstacle.width - 10  # Reduce obstacle's right side
-            obstacle_top = obstacle.rect.y + 10  # Add padding to obstacle's top
+            obstacle_left = obstacle.rect.x + 10  # added padding to obstacle's left side
+            obstacle_right = obstacle.rect.x + obstacle.width - 10  # reduce obstacle's right side
+            obstacle_top = obstacle.rect.y + 10  # add padding to obstacle's top
             
-            # Check if character overlaps with obstacle
+            # check if character overlaps with obstacle
             if (char_left < obstacle_right and 
                 char_right > obstacle_left and 
                 char_bottom > obstacle_top):
                 self.game_state = GameState.GAME_OVER
                 break
     
-    # Update score (optional)
-        self.score += 1
 
     def boss_fight_state(self):
         if self.needs_redraw or not self.last_frame:
