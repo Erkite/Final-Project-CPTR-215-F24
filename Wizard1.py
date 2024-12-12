@@ -335,7 +335,6 @@ class Game():
 
 
 
-
 if __name__ == '__main__':
     Screen_Width = 960
     Screen_Height = 540
