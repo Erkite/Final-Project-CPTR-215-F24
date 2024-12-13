@@ -30,10 +30,51 @@ class GameState(enum.Enum):
     GAME_OVER = "game_over"
     CONTROLS = "controls"
 
+class Score:
+    def __init__(self):
+        self.score = 0
+        self.score_delay = 0
+        self.path = 'Game Images/Backgrounds&Objects/{}.png'
+        self.number_images = {}
+
+        for i in range(10):
+            try:
+                img = py.image.load(self.path.format(f'{i}')).convert_alpha()
+                self.number_images[str(i)] = py.transform.scale(img, (20, 30))  # Adjust size as needed
+            except Exception as e:
+                print(f"Error loading number image for {i}: {e}")
+
+    def increment(self):
+        """
+        Increment the score by a specified amount
+        """
+        self.score_delay += 1
+        if self.score_delay % 6 == 0:
+            self.score += 1
+
+    def reset(self):
+        """
+        Reset the score to zero
+        """
+        self.score = 0
+
+    def draw_score(self, screen, x_pos = 20, y_pos = 20, high_score = None):
+       
+        if high_score:
+            score_str = str(high_score).zfill(3)
+        else:
+            score_str = str(self.score).zfill(3)
+        
+        for digit in score_str:
+            number_image = self.number_images.get(digit)
+            if number_image:
+                screen.blit(number_image, (x_pos, y_pos))
+                x_pos += 20
+
 class Character(py.sprite.Sprite):
     path = 'Game Images/Characters/{}_{}_{}_{}.png'
     
-    def __init__(self, character="Dark_Knight"):
+    def __init__(self, character="Knight"):
         py.sprite.Sprite.__init__(self)
         self.timer = 0
         self.player_X = 50
@@ -160,14 +201,37 @@ class Game:
         py.init()
         self.screen = py.display.set_mode((960, 540))
         py.display.set_caption("Wizard Run")
-        py.font.Font('freesansbold.ttf', 14)
 
-        self.cached_images = {
+        self.high_score_file = 'game_progress.txt'
+        self.high_score = 0
+        
+        # Set a default character
+        self.selected_character = 'Dark_Knight'
+
+        # Read existing high score and character
+        try:
+            with open(self.high_score_file, 'r') as file:
+                lines = file.readlines()
+                if len(lines) >= 2:
+                    # Use the saved character from the file
+                    self.selected_character = lines[0].strip()
+                    try:
+                        self.high_score = int(lines[1].strip())
+                    except ValueError:
+                        self.high_score = 0
+        except FileNotFoundError:
+            # Create the file if it doesn't exist
+            with open(self.high_score_file, 'w') as file:
+                file.write(f"{self.selected_character}\n{self.high_score}")
+
+
+        self.cached_backgrounds = {
             'background': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_Extended.jpg"),
             'forest': self._load_and_scale_image("Game Images/Backgrounds&Objects/FOREST.jpg"),
             'ground': self._load_and_scale_image("Game Images/Backgrounds&Objects/ground.png", True),
             'transition': self._load_and_scale_image("Game Images/Backgrounds&Objects/transition.png", True)
         }
+        
 
         # Call GameStates
         self.states = {
@@ -180,7 +244,7 @@ class Game:
         }
 
         # Game Variables
-        self.score = 0
+        self.game_score = Score()
         self.is_fullscreen = False
         self.clock = py.time.Clock()
         self.game_state = GameState.MENU
@@ -191,7 +255,7 @@ class Game:
         self.frame = 1
 
         # Initialize Character
-        self.character = Character()
+        self.character = Character(self.selected_character)
 
         # Initialize Obstacles
         self.obstacles = py.sprite.Group()
@@ -202,6 +266,7 @@ class Game:
         self.transition_scroll_x = 0
         self.bg_scroll_x = 0
         self.ground_scroll_x = 0
+        
     def _load_and_scale_image(self, path, use_alpha=False):
         """Helper method to load and scale images efficiently"""
         if "Game_Background_Extended" in path:
@@ -213,6 +278,10 @@ class Game:
         else:
             img = py.image.load(path).convert()
         return py.transform.scale(img, self.screen.get_size())
+
+
+
+
 
     def handle_global_events(self):
         ''' 
@@ -278,6 +347,7 @@ class Game:
                         self.game_state = GameState.RUNNING
                     if 397 <= mouse_x <= 561 and 455 <= mouse_y <= 529:
                         self.game_state = GameState.MENU
+                    self.game_score.reset()
 
 
                 
@@ -326,7 +396,7 @@ class Game:
         """
         if self.game_state == GameState.RUNNING:
             # Load Background
-            bg = self.cached_images['background']
+            bg = self.cached_backgrounds['background']
             
             scroll_speed = 3
             screen_width = self.screen.get_width()
@@ -413,6 +483,8 @@ class Game:
         character_image = py.transform.scale(character_image, (176, 220))
         self.screen.blit(character_image, (65, 182))
 
+        self.game_score.draw_score(self.screen, 55, 78, self.high_score)
+
     def character_select_state(self):
         """
         Character selection state rendering
@@ -439,6 +511,7 @@ class Game:
         """
         Running state logic for spawning obstacles and checking collisions
         """
+        self.game_score.increment()
         self.character.state = 'Running'
         # Spawn obstacles
         self.obstacle_spawn_timer += 1
@@ -447,6 +520,7 @@ class Game:
             obstacle = Obstacle(self.screen.get_width(), y_position)
             self.obstacles.add(obstacle)
             self.obstacle_spawn_timer = 0
+        
             
         # Check for collisions with adjusted hitboxes
         for obstacle in self.obstacles:
@@ -468,9 +542,10 @@ class Game:
                 break
     
     def boss_fight_state(self):
+        self.game_score.increment()
         if self.needs_redraw or not self.last_frame:
             self.screen.fill((0, 0, 0))
-            self.screen.blit(self.cached_images['forest'], (0, 0))
+            self.screen.blit(self.cached_backgrounds['forest'], (0, 0))
             self.last_frame = self.screen.copy()
             self.needs_redraw = False
         else:
@@ -480,10 +555,30 @@ class Game:
         """
         Game over state rendering
         """
+        if self.game_score.score >= self.high_score:
+            self.high_score = self.game_score.score
+            image = 2
+            x_pos = 550
+            y_pos = 323
+            
+        else:
+            image = 1
+            x_pos = 496
+            y_pos = 323
 
-        bg = py.image.load(f"Game Images/Backgrounds&Objects/Game_Over_Overlay_2.png").convert_alpha()
-        bg = py.transform.scale(bg, self.screen.get_size())
-        self.screen.blit(bg, (0,0))
+        # Write new high score and character
+        with open(self.high_score_file, 'w') as file:
+            file.write(f"{self.character.character}\n{self.high_score}")
+
+        # Draw Game_Over image
+        game_over_overlay = py.transform.scale(py.image.load(f"Game Images/Backgrounds&Objects/Game_Over_Overlay_{image}.png").convert_alpha(), self.screen.get_size())
+        self.screen.blit(game_over_overlay, (0,0))
+
+        # Draw new score
+        self.game_score.draw_score(self.screen, x_pos, y_pos)
+
+        # Reset Character state and Score
+        self.character.facing = 'Right'
         
 
     def run_game(self):
@@ -508,6 +603,9 @@ class Game:
 
             if self.transition:
                 self.draw_transition()
+
+            if self.game_state in [GameState.RUNNING, GameState.BOSS_FIGHT]:
+                self.game_score.draw_score(self.screen)
 
             py.display.flip()
             self.clock.tick(70)
