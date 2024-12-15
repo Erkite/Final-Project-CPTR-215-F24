@@ -3,6 +3,7 @@
 # 11/07/2024 - started framework
 # 11/12/2024 - cont
 # 12/02/2024 - 
+# 12/15/2024 - background music
 
 # References
 # https://www.py.org/docs/
@@ -18,6 +19,9 @@
 # https://www.youtube.com/watch?v=BHr9jxKithk
 # http://www.codingwithruss.com/pygame/top-3-collision-types-in-pygame/
 
+# Music
+# https://www.fesliyanstudios.com/royalty-free-music/download/viking-feast/2073
+
 import enum
 import pygame as py
 import random
@@ -28,11 +32,53 @@ class GameState(enum.Enum):
     RUNNING = "running"
     BOSS_FIGHT = "boss_fight"
     GAME_OVER = "game_over"
+    CONTROLS = "controls"
+
+class Score:
+    def __init__(self):
+        self.score = 0
+        self.score_delay = 0
+        self.path = 'Game Images/Backgrounds&Objects/{}.png'
+        self.number_images = {}
+
+        for i in range(10):
+            try:
+                img = py.image.load(self.path.format(f'{i}')).convert_alpha()
+                self.number_images[str(i)] = py.transform.scale(img, (20, 30))  # Adjust size as needed
+            except Exception as e:
+                print(f"Error loading number image for {i}: {e}")
+
+    def increment(self):
+        """
+        Increment the score by a specified amount
+        """
+        self.score_delay += 1
+        if self.score_delay % 6 == 0:
+            self.score += 1
+
+    def reset(self):
+        """
+        Reset the score to zero
+        """
+        self.score = 0
+
+    def draw_score(self, screen, x_pos = 20, y_pos = 20, high_score = None):
+       
+        if high_score:
+            score_str = str(high_score).zfill(3)
+        else:
+            score_str = str(self.score).zfill(3)
+        
+        for digit in score_str:
+            number_image = self.number_images.get(digit)
+            if number_image:
+                screen.blit(number_image, (x_pos, y_pos))
+                x_pos += 20
 
 class Character(py.sprite.Sprite):
     path = 'Game Images/Characters/{}_{}_{}_{}.png'
     
-    def __init__(self, character="Dark_Knight"):
+    def __init__(self, character="Knight"):
         py.sprite.Sprite.__init__(self)
         self.timer = 0
         self.player_X = 50
@@ -43,6 +89,7 @@ class Character(py.sprite.Sprite):
         self.is_jumping = False
         self.jump_velocity = 15
         self.ground_level = 330
+        self.image_changer_time = 12
 
         # Movement variables
         self.X_change = 0
@@ -51,7 +98,7 @@ class Character(py.sprite.Sprite):
         # Character Attributes
         self.frame = 1
         self.facing = 'Right'
-        self.state = 'Running'
+        self.state = 'Resting'
         
         # Image-related attributes
         self.character_image = None
@@ -63,7 +110,7 @@ class Character(py.sprite.Sprite):
         """
         self.timer += 1
 
-        if self.timer >= 12:
+        if self.timer >= self.image_changer_time:
             self.timer = 0
             self.frame = 2 if self.frame == 1 else 1
 
@@ -134,8 +181,10 @@ class Character(py.sprite.Sprite):
             self.X_change = -self.move_speed * 1.7
 
 class Obstacle(py.sprite.Sprite):
-    def __init__(self, x, y, image_path="Game Images/Backgrounds&Objects/rock.gif"):
+    def __init__(self, x, y, obstacle_type="rock"):
         super().__init__()
+        # Set image path based on obstacle type
+        image_path = f"Game Images/Backgrounds&Objects/{obstacle_type}.gif"
         self.image = py.image.load(image_path).convert_alpha()
         self.image = py.transform.scale(self.image, (70, 70))  # obstacle size
         self.rect = self.image.get_rect()
@@ -158,26 +207,50 @@ class Game:
         py.init()
         self.screen = py.display.set_mode((960, 540))
         py.display.set_caption("Wizard Run")
-        py.font.Font('freesansbold.ttf', 14)
 
-        self.cached_images = {
+        self.high_score_file = 'game_progress.txt'
+        self.high_score = 0
+        
+        # Set a default character
+        self.selected_character = 'Dark_Knight'
+
+        # Read existing high score and character
+        try:
+            with open(self.high_score_file, 'r') as file:
+                lines = file.readlines()
+                if len(lines) >= 2:
+                    # Use the saved character from the file
+                    self.selected_character = lines[0].strip()
+                    try:
+                        self.high_score = int(lines[1].strip())
+                    except ValueError:
+                        self.high_score = 0
+        except FileNotFoundError:
+            # Create the file if it doesn't exist
+            with open(self.high_score_file, 'w') as file:
+                file.write(f"{self.selected_character}\n{self.high_score}")
+
+
+        self.cached_backgrounds = {
             'background': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_Extended.jpg"),
             'forest': self._load_and_scale_image("Game Images/Backgrounds&Objects/FOREST.jpg"),
             'ground': self._load_and_scale_image("Game Images/Backgrounds&Objects/ground.png", True),
             'transition': self._load_and_scale_image("Game Images/Backgrounds&Objects/transition.png", True)
         }
+        
 
         # Call GameStates
         self.states = {
             GameState.MENU: self.menu_state,
             GameState.CHARACTER_SELECT: self.character_select_state,
+            GameState.CONTROLS: self.controls_state, 
             GameState.RUNNING: self.running_state,
             GameState.BOSS_FIGHT: self.boss_fight_state,
             GameState.GAME_OVER: self.game_over_state,
         }
 
         # Game Variables
-        self.score = 0
+        self.game_score = Score()
         self.is_fullscreen = False
         self.clock = py.time.Clock()
         self.game_state = GameState.MENU
@@ -188,7 +261,7 @@ class Game:
         self.frame = 1
 
         # Initialize Character
-        self.character = Character()
+        self.character = Character(self.selected_character)
 
         # Initialize Obstacles
         self.obstacles = py.sprite.Group()
@@ -199,6 +272,11 @@ class Game:
         self.transition_scroll_x = 0
         self.bg_scroll_x = 0
         self.ground_scroll_x = 0
+
+        py.mixer.init()
+        py.mixer.music.load("bg_music.mp3")
+        py.mixer.music.play(-1)
+        
     def _load_and_scale_image(self, path, use_alpha=False):
         """Helper method to load and scale images efficiently"""
         if "Game_Background_Extended" in path:
@@ -210,6 +288,10 @@ class Game:
         else:
             img = py.image.load(path).convert()
         return py.transform.scale(img, self.screen.get_size())
+
+
+
+
 
     def handle_global_events(self):
         ''' 
@@ -244,7 +326,9 @@ class Game:
                 self.dragon_eye_open = False
                 mouse_x, mouse_y = py.mouse.get_pos()
                 if self.game_state == GameState.MENU:
-                    if 672 <= mouse_x <= 927 and 213 <= mouse_y <= 276:
+                    if 820 <= mouse_x <= 910 and 50 <= mouse_y <= 84:
+                        self.game_state = GameState.CONTROLS
+                    elif 672 <= mouse_x <= 927 and 213 <= mouse_y <= 276:
                         self.transition = True
                     elif 696 <= mouse_x <= 896 and 335 <= mouse_y <= 377:
                         self.running = False
@@ -252,7 +336,7 @@ class Game:
                         self.game_state = GameState.CHARACTER_SELECT
 
                 elif self.game_state == GameState.CHARACTER_SELECT:
-                    if 26 <= mouse_x <= 128 and 28 <= mouse_y <= 69:
+                    if 74 <= mouse_x <= 176 and 89 <= mouse_y <= 133:
                         self.game_state = GameState.MENU
                     elif 79 <= mouse_x <= 308 and 189 <= mouse_y <= 467:
                         self.character.character = 'Knight'
@@ -264,9 +348,20 @@ class Game:
                         self.character.character = 'Dark_Knight'
                         self.game_state = GameState.MENU
 
+                elif self.game_state == GameState.CONTROLS:
+                    if 26 <= mouse_x <= 128 and 28 <= mouse_y <= 69:
+                        self.game_state = GameState.MENU
+
+                elif self.game_state == GameState.GAME_OVER:
+                    if 422 <= mouse_x <= 637 and 347 <= mouse_y <= 422:
+                        self.game_state = GameState.RUNNING
+                    if 397 <= mouse_x <= 561 and 455 <= mouse_y <= 529:
+                        self.game_state = GameState.MENU
+                    self.game_score.reset()
+
+
                 
             if event.type == py.KEYDOWN:
-
                 # Navigation shortcuts (delete later)
                 keys = py.key.get_pressed()
                 if keys[py.K_1]:
@@ -279,23 +374,26 @@ class Game:
                     self.transition = True
                 elif keys[py.K_5]:
                     self.game_state = GameState.GAME_OVER
+                elif keys[py.K_6]:
+                    self.game_state = GameState.CONTROLS
 
                 # Handle Character Movement
-                if (keys[py.K_SPACE] or keys[py.K_UP]) and not self.character.is_jumping:
-                    self.character.is_jumping = True
-                    self.character.Y_change = self.character.jump_velocity
-                    self.character.state = 'Running'
-                if (keys[py.K_d] or keys[py.K_RIGHT]):
-                    self.character.X_change = self.character.move_speed
-                    self.character.facing = 'Right'
-                    self.character.state = 'Running'
-                if (keys[py.K_a] or keys[py.K_LEFT]):
-                    self.character.facing = 'Left'
-                    self.character.state = 'Running'
-                    if self.game_state == GameState.RUNNING:
-                        self.character.X_change = -self.character.move_speed * 1.7
-                    elif self.game_state == GameState.BOSS_FIGHT:
-                        self.character.X_change = -self.character.move_speed
+                if self.game_state == GameState.BOSS_FIGHT or self.game_state == GameState.RUNNING:
+                    if (keys[py.K_SPACE] or keys[py.K_UP]) and not self.character.is_jumping:
+                        self.character.is_jumping = True
+                        self.character.Y_change = self.character.jump_velocity
+                        self.character.state = 'Running'
+                    if (keys[py.K_d] or keys[py.K_RIGHT]):
+                        self.character.X_change = self.character.move_speed
+                        self.character.facing = 'Right'
+                        self.character.state = 'Running'
+                    if (keys[py.K_a] or keys[py.K_LEFT]):
+                        self.character.facing = 'Left'
+                        self.character.state = 'Running'
+                        if self.game_state == GameState.RUNNING:
+                            self.character.X_change = -self.character.move_speed * 1.7
+                        elif self.game_state == GameState.BOSS_FIGHT:
+                            self.character.X_change = -self.character.move_speed
 
             if event.type == py.KEYUP:
                 #self.character.state = 'Resting'
@@ -308,7 +406,7 @@ class Game:
         """
         if self.game_state == GameState.RUNNING:
             # Load Background
-            bg = self.cached_images['background']
+            bg = self.cached_backgrounds['background']
             
             scroll_speed = 3
             screen_width = self.screen.get_width()
@@ -388,8 +486,14 @@ class Game:
         bg = py.transform.scale(bg, self.screen.get_size())
         self.screen.blit(bg, (0,0))
 
-        #character_image = py.transform.scale(self.character.character_image, (132, 165))
-        #self.screen.blit(character_image, (self.player_X, self.player_Y))
+        self.character.facing = 'Right'
+        self.character.state = 'Resting'
+        self.character.image_changer_time = 24
+        character_image = py.image.load(self.character.change_image()).convert_alpha()
+        character_image = py.transform.scale(character_image, (176, 220))
+        self.screen.blit(character_image, (65, 182))
+
+        self.game_score.draw_score(self.screen, 55, 78, self.high_score)
 
     def character_select_state(self):
         """
@@ -407,17 +511,29 @@ class Game:
         bg = py.image.load(f"Game Images/Backgrounds&Objects/Character_Select_{self.frame}.png").convert_alpha()
         bg = py.transform.scale(bg, self.screen.get_size())
         self.screen.blit(bg, (0,0))
+
+    def controls_state(self):
+        bg = py.image.load(f"Game Images/Backgrounds&Objects/Controls.jpg").convert_alpha()
+        bg = py.transform.scale(bg, self.screen.get_size())
+        self.screen.blit(bg, (0,0))
+
     def running_state(self):
         """
         Running state logic for spawning obstacles and checking collisions
         """
+        self.game_score.increment()
+        self.character.state = 'Running'
+        
         # Spawn obstacles
         self.obstacle_spawn_timer += 1
         if self.obstacle_spawn_timer > random.randint(100, 300):
             y_position = self.screen.get_height() - 115
-            obstacle = Obstacle(self.screen.get_width(), y_position)
+            # Randomly choose between rock and boxes
+            obstacle_type = random.choice(['rock', 'boxes'])
+            obstacle = Obstacle(self.screen.get_width(), y_position, obstacle_type)
             self.obstacles.add(obstacle)
             self.obstacle_spawn_timer = 0
+        
             
         # Check for collisions with adjusted hitboxes
         for obstacle in self.obstacles:
@@ -438,11 +554,11 @@ class Game:
                 self.game_state = GameState.GAME_OVER
                 break
     
-
     def boss_fight_state(self):
+        self.game_score.increment()
         if self.needs_redraw or not self.last_frame:
             self.screen.fill((0, 0, 0))
-            self.screen.blit(self.cached_images['forest'], (0, 0))
+            self.screen.blit(self.cached_backgrounds['forest'], (0, 0))
             self.last_frame = self.screen.copy()
             self.needs_redraw = False
         else:
@@ -452,7 +568,31 @@ class Game:
         """
         Game over state rendering
         """
-        self.screen.fill((50, 50, 50))  # Gray screen for game over
+        if self.game_score.score >= self.high_score:
+            self.high_score = self.game_score.score
+            image = 2
+            x_pos = 550
+            y_pos = 323
+            
+        else:
+            image = 1
+            x_pos = 496
+            y_pos = 323
+
+        # Write new high score and character
+        with open(self.high_score_file, 'w') as file:
+            file.write(f"{self.character.character}\n{self.high_score}")
+
+        # Draw Game_Over image
+        game_over_overlay = py.transform.scale(py.image.load(f"Game Images/Backgrounds&Objects/Game_Over_Overlay_{image}.png").convert_alpha(), self.screen.get_size())
+        self.screen.blit(game_over_overlay, (0,0))
+
+        # Draw new score
+        self.game_score.draw_score(self.screen, x_pos, y_pos)
+
+        # Reset Character state and Score
+        self.character.facing = 'Right'
+        
 
     def run_game(self):
         """
@@ -476,6 +616,9 @@ class Game:
 
             if self.transition:
                 self.draw_transition()
+
+            if self.game_state in [GameState.RUNNING, GameState.BOSS_FIGHT]:
+                self.game_score.draw_score(self.screen)
 
             py.display.flip()
             self.clock.tick(70)
