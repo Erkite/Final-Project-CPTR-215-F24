@@ -266,6 +266,10 @@ class Game:
         self.transition_scroll_x = 0
         self.bg_scroll_x = 0
         self.ground_scroll_x = 0
+
+        py.mixer.init()
+        py.mixer.music.load("bg_music.mp3")
+        py.mixer.music.play(-1)
         
     def _load_and_scale_image(self, path, use_alpha=False):
         """Helper method to load and scale images efficiently"""
