@@ -202,6 +202,7 @@ class Dragon:
         self.fireball_x = 0
         self.fireball_y = 0
         
+        # Dictionary of fireball positions
         self.fireballs_dict = {
             'left_fireball_one': (4500, 400),
             'left_fireball_two': (5000, 200),
@@ -233,7 +234,6 @@ class Dragon:
         draws the dragon onto the screen for the boss fight
         '''
         self.boss_fight_timer += 1
-        #print(self.boss_fight_timer) # for debugging and fine tuning
        
         # Dragon moves right until it's top left corner has reached x = 0, then it moves left
         if 200 <= self.boss_fight_timer <= 575:
@@ -560,24 +560,12 @@ class Game:
                         self.game_score.reset()
 
 
-            # Gamestate Navigation shortcuts for debugging (delete later)
-            
+            # Gamestate Navigation shortcuts for debugging
             if event.type == py.KEYDOWN:
                 keys = py.key.get_pressed()
-                '''
-                if keys[py.K_1]:
-                    self.game_state = GameState.MENU
-                elif keys[py.K_2]:
-                    self.game_state = GameState.CHARACTER_SELECT
-                elif keys[py.K_3]:
+                if keys[py.K_3]:
                     self.transition = True
-                elif keys[py.K_4]:
-                    self.transition = True
-                elif keys[py.K_5]:
-                    self.game_state = GameState.GAME_OVER
-                elif keys[py.K_6]:
-                    self.game_state = GameState.CONTROLS
-                '''
+                
                 # Handle Character Movement
                 if self.game_state == GameState.BOSS_FIGHT or self.game_state == GameState.RUNNING:
                     if (keys[py.K_SPACE] or keys[py.K_UP]) and not self.character.is_jumping:
@@ -732,6 +720,7 @@ class Game:
         '''
         self.game_score.increment()
         if self.game_score.score % 450 == 0:
+            self.dragon.reset()
             self.dragon.boss_fight_timer = 0
             self.transition = True 
 
