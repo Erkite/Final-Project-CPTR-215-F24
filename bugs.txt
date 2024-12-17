@@ -1,0 +1,4 @@
+Known bugs for Dragon Run:
+
+1. Spamming the "Play Again" button instantly after death may collide
+the player with the same obstacle that they just hit.
