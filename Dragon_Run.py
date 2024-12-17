@@ -441,7 +441,7 @@ class Game:
             'background_1': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_1.jpg"),
             'background_2': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_2.jpg"),
             'background_3': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_3.jpg"),
-            'forest': self._load_and_scale_image("Game Images/Backgrounds&Objects/FOREST.jpg"),
+            'forest': self._load_and_scale_image("Game Images/Backgrounds&Objects/Forest.jpg"),
             'ground': self._load_and_scale_image("Game Images/Backgrounds&Objects/ground.png", True),
             'transition': self._load_and_scale_image("Game Images/Backgrounds&Objects/transition.png", True)
         }
