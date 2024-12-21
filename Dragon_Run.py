@@ -95,7 +95,7 @@ class Character(py.sprite.Sprite):
         self.ground_level = 330
         self.timer = 0
 
-        # Movement variables
+        # Movement fields
         self.is_jumping = False
         self.jump_velocity = 15
         self.move_speed = 5
@@ -342,6 +342,7 @@ class Dragon:
     
     def reset(self):
         '''
+        Reset the boss mode
         '''
         self.boss_fight_timer = 0
         self.facing = 'Right'
@@ -436,7 +437,7 @@ class Game:
             with open(self.high_score_file, 'w') as file:
                 file.write(f"{self.selected_character}\n{self.high_score}")
 
-        # create a set of all cached backgrounds
+        # create a dictionary of all cached backgrounds
         self.cached_backgrounds = {
             'background_1': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_1.jpg"),
             'background_2': self._load_and_scale_image("Game Images/Backgrounds&Objects/Game_Background_2.jpg"),
@@ -586,7 +587,7 @@ class Game:
 
             # Stops character movement when nkey is let up
             if event.type == py.KEYUP:
-                #self.character.state = 'Resting'
+                #self.character.state = 'Resting' (?)
                 if event.key == py.K_d or event.key == py.K_RIGHT or event.key == py.K_a or event.key == py.K_LEFT:
                     self.character.X_change = 0
 
